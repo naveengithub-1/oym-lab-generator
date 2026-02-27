@@ -1,4 +1,3 @@
-pip install streamlit reportlab
 import streamlit as st
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image
 from reportlab.lib import colors
