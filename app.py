@@ -3,60 +3,49 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import KeepTogether
 import io
 from datetime import datetime
 
 # -----------------------------
-# PREMIUM COLOR PALETTE
+# LUXURY COLORS
 # -----------------------------
 BLACK = colors.HexColor("#000000")
 GOLD = colors.HexColor("#D4AF37")
-LIGHT_GOLD = colors.HexColor("#F5E6B3")
 
 # -----------------------------
-# ADVANCED IMPLANT DATABASE
+# IMPLANT DATABASE
 # -----------------------------
 IMPLANT_DATABASE = {
 
     "Osstem TSIV": {
-        "drills": {
-            "3.5": ["Tissue Punch", "Flatten Drill", "Initial Drill",
-                    "2.2 Pilot", "3.5 Final"],
-            "4.0": ["Tissue Punch", "Flatten Drill", "Initial Drill",
-                    "2.2 Pilot", "3.5 Drill", "4.0 Final"],
-            "5.0": ["Tissue Punch", "Flatten Drill", "Initial Drill",
-                    "3.5 Drill", "4.5 Drill", "5.0 Final"]
-        }
+        "3.5": ["Tissue Punch", "Flatten Drill", "Initial Drill", "2.2 Pilot", "3.5 Final"],
+        "4.0": ["Tissue Punch", "Flatten Drill", "Initial Drill", "2.2 Pilot", "3.5 Drill", "4.0 Final"],
+        "5.0": ["Tissue Punch", "Flatten Drill", "Initial Drill", "3.5 Drill", "4.5 Drill", "5.0 Final"]
     },
 
     "Nobel Active": {
-        "drills": {
-            "3.5": ["Round Drill", "2.0 Twist", "3.5 Twist"],
-            "4.3": ["Round Drill", "2.0 Twist", "3.5 Twist", "4.3 Final"]
-        }
+        "3.5": ["Round Drill", "2.0 Twist Drill", "3.5 Twist Drill"],
+        "4.3": ["Round Drill", "2.0 Twist Drill", "3.5 Twist Drill", "4.3 Final Drill"]
     },
 
     "Megagen AnyRidge": {
-        "drills": {
-            "4.0": ["Marking Drill", "2.0 Drill", "3.5 Drill", "4.0 Final"],
-            "5.0": ["Marking Drill", "2.0 Drill", "4.0 Drill", "5.0 Final"]
-        }
+        "4.0": ["Marking Drill", "2.0 Drill", "3.5 Drill", "4.0 Final Drill"],
+        "5.0": ["Marking Drill", "2.0 Drill", "4.0 Drill", "5.0 Final Drill"]
     },
 
     "Alpha Bio SPI": {
-        "drills": {
-            "3.75": ["Pilot Drill", "3.2 Drill", "3.75 Final"],
-            "4.2": ["Pilot Drill", "3.2 Drill", "3.75 Drill", "4.2 Final"]
-        }
+        "3.75": ["Pilot Drill", "3.2 Drill", "3.75 Final Drill"],
+        "4.2": ["Pilot Drill", "3.2 Drill", "3.75 Drill", "4.2 Final Drill"]
     }
 }
 
 # -----------------------------
-# BONE LOGIC
+# RPM & TORQUE LOGIC
 # -----------------------------
 def get_rpm_and_torque(stage, bone):
+
     if stage == "Implant Placement":
+
         if bone == "D1":
             return "15 RPM", "Max 35 Ncm"
         if bone == "D2":
@@ -65,10 +54,11 @@ def get_rpm_and_torque(stage, bone):
             return "25 RPM", "30–40 Ncm"
         if bone == "D4":
             return "30 RPM", "25–35 Ncm"
+
     return "800–1200 RPM", "-"
 
 # -----------------------------
-# PDF BUILDER
+# PDF GENERATOR
 # -----------------------------
 def generate_pdf(data):
 
@@ -90,8 +80,12 @@ def generate_pdf(data):
         textColor=GOLD
     )
 
-    # COVER PAGE
-    elements.append(Image("/mnt/data/OYM.png", width=2*inch, height=2*inch))
+    # ---------------- COVER PAGE ----------------
+    try:
+        elements.append(Image("OYM.png", width=2*inch, height=2*inch))
+    except:
+        pass
+
     elements.append(Spacer(1, 20))
     elements.append(Paragraph("OYM ELITE GUIDED SURGERY PROTOCOL", gold_title))
     elements.append(Spacer(1, 20))
@@ -100,16 +94,16 @@ def generate_pdf(data):
     elements.append(Paragraph(f"Date: {datetime.today().strftime('%d-%m-%Y')}", normal_gold))
     elements.append(PageBreak())
 
-    # GUIDELINES PAGE
+    # ---------------- GUIDELINES ----------------
     elements.append(Paragraph("CRITICAL SURGICAL GUIDELINES", gold_title))
     elements.append(Spacer(1, 15))
 
     guidelines = [
-        "• Verify passive and stable guide seating.",
+        "• Verify passive and stable guide seating before drilling.",
         "• Insert drill fully into sleeve BEFORE activation.",
         "• Maintain 800–1200 RPM with copious irrigation.",
-        "• Never exceed 45 Ncm to avoid crestal necrosis.",
-        "• Use cortical tap in D1 bone."
+        "• Do not exceed 45 Ncm to prevent crestal bone necrosis.",
+        "• Use cortical tap in D1 bone density."
     ]
 
     for g in guidelines:
@@ -118,22 +112,23 @@ def generate_pdf(data):
 
     elements.append(PageBreak())
 
-    # EACH SITE PROTOCOL
+    # ---------------- EACH IMPLANT SITE ----------------
     for site in data["sites"]:
 
         elements.append(Paragraph(
             f"Tooth {site['tooth']} | {site['system']} | "
-            f"{site['diameter']} x {site['length']} | Bone: {site['bone']}",
+            f"{site['diameter']} x {site['length']} mm | Bone: {site['bone']}",
             gold_title
         ))
         elements.append(Spacer(1, 12))
 
-        drills = IMPLANT_DATABASE[site["system"]]["drills"].get(site["diameter"], [])
+        drills = IMPLANT_DATABASE.get(site["system"], {}).get(site["diameter"], [])
 
+        # Hard bone auto cortical tap
         if site["bone"] == "D1":
-            drills.append("Cortical Tap")
+            drills = drills + ["Cortical Tap"]
 
-        drills.append("Implant Placement")
+        drills = drills + ["Implant Placement"]
 
         table_data = [["Step", "Instrument", "RPM", "Torque"]]
 
@@ -141,19 +136,18 @@ def generate_pdf(data):
             rpm, torque = get_rpm_and_torque(drill, site["bone"])
             table_data.append([str(i+1), drill, rpm, torque])
 
-        table = Table(table_data)
+        table = Table(table_data, hAlign='LEFT')
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), GOLD),
             ('TEXTCOLOR', (0,0), (-1,0), BLACK),
             ('GRID', (0,0), (-1,-1), 0.5, GOLD),
             ('TEXTCOLOR', (0,1), (-1,-1), GOLD),
-            ('BACKGROUND', (0,1), (-1,-1), BLACK)
         ]))
 
         elements.append(table)
         elements.append(PageBreak())
 
-    # QA PAGE
+    # ---------------- QA PAGE ----------------
     elements.append(Paragraph("POST SURGICAL QUALITY CONTROL", gold_title))
     elements.append(Spacer(1, 20))
 
@@ -161,7 +155,7 @@ def generate_pdf(data):
         "[  ] Guide seating verified",
         "[  ] Sleeve offset confirmed",
         "[  ] Final torque recorded",
-        "[  ] Implant stability confirmed"
+        "[  ] Implant primary stability confirmed"
     ]
 
     for item in qa:
@@ -179,10 +173,9 @@ def generate_pdf(data):
 # -----------------------------
 # STREAMLIT UI
 # -----------------------------
+st.set_page_config(page_title="OYM Elite Protocol", layout="wide")
 
-st.set_page_config(page_title="OYM Elite Surgical Protocol", layout="wide")
-
-st.title("🦷 OYM BLACK & GOLD ELITE PROTOCOL")
+st.title("🦷 OYM BLACK & GOLD ELITE SURGICAL PROTOCOL")
 
 doctor = st.text_input("Doctor Name")
 patient = st.text_input("Patient Name")
@@ -194,9 +187,11 @@ if st.button("Add Implant Site"):
     st.session_state.sites.append({})
 
 for i in range(len(st.session_state.sites)):
+
     st.markdown(f"### Implant Site {i+1}")
-    tooth = st.text_input("Tooth", key=f"tooth{i}")
-    system = st.selectbox("System", list(IMPLANT_DATABASE.keys()), key=f"sys{i}")
+
+    tooth = st.text_input("Tooth Number", key=f"tooth{i}")
+    system = st.selectbox("Implant System", list(IMPLANT_DATABASE.keys()), key=f"sys{i}")
     diameter = st.selectbox("Diameter", ["3.5", "4.0", "4.3", "5.0"], key=f"dia{i}")
     length = st.text_input("Length (mm)", key=f"len{i}")
     bone = st.selectbox("Bone Density", ["D1", "D2", "D3", "D4"], key=f"bone{i}")
@@ -209,7 +204,7 @@ for i in range(len(st.session_state.sites)):
         "bone": bone
     }
 
-if st.button("Generate Luxury Protocol PDF"):
+if st.button("Generate OYM Elite PDF"):
 
     payload = {
         "doctor": doctor,
