@@ -3,7 +3,6 @@ from fpdf import FPDF
 import os
 
 # --- 1. COMPREHENSIVE IMPLANT DATABASE ---
-# This dictionary handles the specific drilling logic and colors for 10 companies.
 SYSTEM_CONFIG = {
     "Osstem TS IV": {"base": ["Tissue Punch", "Flatten Drill", "Initial Drill"], "color": (255, 215, 0)},
     "Megagen AnyRidge": {"base": ["Guide Drill", "2.0 Drill", "3.3 Drill"], "color": (0, 102, 204)},
@@ -18,18 +17,18 @@ SYSTEM_CONFIG = {
 }
 
 class OYM_Protocol_PDF(FPDF):
-    def __init__(self, logo_exists):
+    def __init__(self, logo_path):
         super().__init__()
-        self.logo_exists = logo_exists
+        self.logo_path = logo_path
 
     def header(self):
-        # Professional Yellow Header
+        # Professional Yellow Header Box
         self.set_fill_color(255, 215, 0)
         self.rect(0, 0, 210, 35, 'F')
         
-        # Logo Logic: If OYM.png is missing, it uses text so it won't error out
-        if self.logo_exists:
-            self.image("OYM.png", 10, 8, 20)
+        # Logo Logic: Use logo if exists, else text placeholder
+        if os.path.exists(self.logo_path):
+            self.image(self.logo_path, 10, 8, 20)
         else:
             self.set_font('Arial', 'B', 15)
             self.set_xy(10, 12)
@@ -50,18 +49,17 @@ class OYM_Protocol_PDF(FPDF):
         self.set_text_color(120)
         self.cell(0, 10, f'Page {self.page_no()} | Precision Engineering by OYM Dental Lab', align='C')
 
-def generate_full_protocol(data):
-    # Check if logo exists to prevent app crash
-    logo_exists = os.path.exists("OYM.png")
-    pdf = OYM_Protocol_PDF(logo_exists)
+def generate_pdf(data):
+    # Ensure logo path is correct for your GitHub repo
+    pdf = OYM_Protocol_PDF("OYM.png")
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # [cite_start]PAGE 1: CLINICAL GUIDELINES [cite: 10-20]
+    # PAGE 1: GUIDELINES
     pdf.add_page()
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, f"Dear {data['dr_name']},", ln=True)
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, f"Enclosed is the customized drilling sequence for {data['patient_name']}. Flowcharts are color-coded to match the physical bands on your drills.")
+    pdf.multi_cell(0, 6, f"Enclosed is the customized drilling sequence for {data['patient_name']}. The flowcharts are color-coded to match the physical bands on your drills.")
     
     pdf.ln(5)
     pdf.set_fill_color(245, 245, 245)
@@ -71,16 +69,16 @@ def generate_full_protocol(data):
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=9)
     guidelines = [
-        [cite_start]"1. Guide Fit: Verify seating via inspection windows. Zero rocking. [cite: 15]",
-        "2. [cite_start]Drill Insertion: Insert drill completely BEFORE starting rotation. [cite: 16]",
-        "3. [cite_start]Drill Speed: 800-1200 RPM with copious saline irrigation. [cite: 18]",
-        "4. Placement: 15-20 RPM. [cite_start]Target torque: 35-45 Ncm. [cite: 19]",
-        "5. [cite_start]Sleeve Offset: Calibrated to 10.5mm (Bone Level). [cite: 151]"
+        "1. Guide Fit: Verify seating via inspection windows. Zero rocking before proceeding.",
+        "2. Drill Insertion: Insert drill completely into sleeve BEFORE starting rotation.",
+        "3. Drill Speed: 800-1200 RPM with copious saline irrigation.",
+        "4. Placement: 15-20 RPM. Final torque target: 35 to 45 Ncm.",
+        "5. Sleeve Offset: All offsets calibrated to 10.5mm (Bone Level)."
     ]
     for line in guidelines:
         pdf.cell(0, 6, f"  {line}", ln=True)
 
-    # [cite_start]PAGE 2: DRILLING SEQUENCE FLOWCHART [cite: 21-33]
+    # PAGE 2: DRILLING SEQUENCE
     pdf.add_page()
     pdf.set_fill_color(60, 40, 30)
     pdf.set_text_color(255, 255, 255)
@@ -89,15 +87,14 @@ def generate_full_protocol(data):
     pdf.cell(0, 10, header_text, ln=True, fill=True)
     
     pdf.ln(10)
-    # Sequence Logic
     sys_info = SYSTEM_CONFIG.get(data['system'])
     drills = sys_info['base'] + [f"{data['dia']} Drill"]
     if data['bone'] == "Hard": drills.append("Cortical Tap")
 
-    # Draw Boxes
+    # Flowchart Drawing
     x, y = 15, pdf.get_y()
     for i, drill in enumerate(drills):
-        pdf.set_fill_color(255, 250, 205)
+        pdf.set_fill_color(255, 250, 205) # Default light yellow box
         pdf.rect(x + (i%4*45), y + (i//4*20), 38, 14, 'FD')
         pdf.set_xy(x + (i%4*45), y + (i//4*20) + 2)
         pdf.set_text_color(0, 0, 0)
@@ -107,44 +104,46 @@ def generate_full_protocol(data):
             pdf.set_xy(x + (i%4*45) + 38, y + (i//4*20) + 5)
             pdf.cell(7, 5, ">>")
 
-    # [cite_start]PAGE 3: QA & ELITE CLUB [cite: 148-160]
+    # PAGE 3: QA & ELITE CLUB
     pdf.add_page()
     pdf.set_text_color(0)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, "POST-SURGICAL & QUALITY ASSURANCE", ln=True)
     pdf.set_font("Arial", size=10)
-    [cite_start]pdf.cell(0, 8, "[ ] Guide seating verified on printed models. [cite: 150]", ln=True)
-    [cite_start]pdf.cell(0, 8, "[ ] Sleeve offsets calibrated to 10.5mm. [cite: 151]", ln=True)
+    pdf.cell(0, 8, "[ ] Guide seating verified on printed models.", ln=True)
+    pdf.cell(0, 8, "[ ] Sleeve offsets calibrated to 10.5mm (bone level).", ln=True)
+    pdf.cell(0, 8, "[ ] Trajectory aligned avoiding neurovascular bundles.", ln=True)
     
     pdf.ln(20)
     pdf.set_fill_color(240, 240, 240)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 10, "WELCOME TO THE OYM ELITE CLUB", ln=True, fill=True)
     pdf.set_font("Arial", size=10)
-    [cite_start]pdf.multi_cell(0, 6, f"Dr. {data['dr_name']}, we have your patient's digital files ready! Let us craft your final Implant Prosthesis and Zirconium Crowns with VIP rates. [cite: 157-159]\nContact: +91 88383 02454")
+    pdf.multi_cell(0, 6, f"Dr. {data['dr_name']}, we already have your patient's digital files ready! Let us craft your final Implant Prosthesis and Zirconium Crowns with priority milling and VIP rates.\nContact: +91 88383 02454")
 
     return bytes(pdf.output(dest='S'))
 
-# --- 2. STREAMLIT INTERFACE ---
-st.set_page_config(page_title="OYM Lab Generator", layout="wide")
+# --- STREAMLIT UI ---
+st.set_page_config(page_title="OYM Lab Pro", layout="wide")
 
 with st.sidebar:
-    st.header("Patient Info")
+    st.header("Patient & Doctor")
     dr = st.text_input("Doctor Name", "Dr. Naveen")
     pt = st.text_input("Patient Name", "Shrey Sipani")
     
     st.divider()
     st.header("Implant Specs")
     sys = st.selectbox("Company", list(SYSTEM_CONFIG.keys()))
-    i_type = st.text_input("Implant Type (e.g. TS IV)", "TS IV")
+    i_type = st.text_input("Implant Type", "TS IV")
     tooth = st.text_input("Tooth #", "14")
     dia = st.selectbox("Diameter", ["3.5mm", "4.0mm", "4.5mm", "5.0mm"])
     length = st.selectbox("Length", ["7mm", "8.5mm", "10mm", "11.5mm", "13mm"])
     bone = st.selectbox("Bone Quality", ["Normal", "Hard", "Soft"])
 
 st.title("🦷 OYM Dental Lab: Professional Protocol")
+
 if st.button("🚀 Generate Full Multi-Page Protocol"):
-    data = {"dr_name": dr, "patient_name": pt, "system": sys, "type": i_type, 
-            "tooth": tooth, "dia": dia, "length": length, "bone": bone}
-    pdf_bytes = generate_full_protocol(data)
-    st.download_button("Download High-Quality PDF", data=pdf_bytes, file_name=f"OYM_{pt}.pdf")
+    payload = {"dr_name": dr, "patient_name": pt, "system": sys, "type": i_type, 
+               "tooth": tooth, "dia": dia, "length": length, "bone": bone}
+    pdf_bytes = generate_pdf(payload)
+    st.download_button("Download Protocol PDF", data=pdf_bytes, file_name=f"OYM_{pt}_Protocol.pdf")
